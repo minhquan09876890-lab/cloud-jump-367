@@ -33,6 +33,10 @@ let score = 0;
 let gameOver = false;
 let gameStarted = false;
 
+// Biến điều khiển chuyển động nền (Background Scrolling)
+let bgCloudX = 0;
+let bgHillX = 0;
+
 // --- HỆ THỐNG ÂM THANH (WEB AUDIO API) ---
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
@@ -43,7 +47,6 @@ function initAudio() {
     }
 }
 
-// 1. Âm thanh khi bay (Jump/Flap)
 function playJumpSound() {
     if (!audioCtx) return;
     let osc = audioCtx.createOscillator();
@@ -59,14 +62,13 @@ function playJumpSound() {
     osc.stop(audioCtx.currentTime + 0.1);
 }
 
-// 2. Âm thanh khi cộng điểm (Score)
 function playScoreSound() {
     if (!audioCtx) return;
     let osc = audioCtx.createOscillator();
     let gain = audioCtx.createGain();
     osc.type = 'triangle';
-    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // Note C5
-    osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.08); // Note E5
+    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+    osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.08);
     gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
     gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
     osc.connect(gain);
@@ -75,7 +77,6 @@ function playScoreSound() {
     osc.stop(audioCtx.currentTime + 0.2);
 }
 
-// 3. Âm thanh Va chạm (Game Over)
 function playHitSound() {
     if (!audioCtx) return;
     let osc = audioCtx.createOscillator();
@@ -102,32 +103,42 @@ function handleInput() {
 window.addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); handleInput(); } });
 canvas.addEventListener('click', handleInput);
 
-// --- VẼ MÔI TRƯỜNG & PHÔNG NỀN (BACKGROUND) ---
+// --- VẼ MÔI TRƯỜNG & PHÔNG NỀN CHUYỂN ĐỘNG (SCROLLING BACKGROUND) ---
 function drawBackground() {
-    // Đám mây trang trí phía xa trên bầu trời
+    // 1. Cập nhật vị trí nền khi đang chơi
+    if (gameStarted && !gameOver) {
+        bgCloudX = (bgCloudX - 0.8) % 400; // Mây nền trôi chậm
+        bgHillX = (bgHillX - 2.0) % 400;   // Đồi trôi nhanh hơn
+    }
+
+    // 2. Đám mây xa trên bầu trời (Cuộn lặp lại)
     ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-    ctx.beginPath();
-    ctx.arc(80, 50, 30, 0, Math.PI * 2);
-    ctx.arc(120, 45, 40, 0, Math.PI * 2);
-    ctx.arc(160, 50, 30, 0, Math.PI * 2);
-    ctx.fill();
+    for (let offset of [bgCloudX, bgCloudX + 400]) {
+        ctx.beginPath();
+        ctx.arc(offset + 80, 50, 30, 0, Math.PI * 2);
+        ctx.arc(offset + 120, 45, 40, 0, Math.PI * 2);
+        ctx.arc(offset + 160, 50, 30, 0, Math.PI * 2);
+        ctx.fill();
 
-    ctx.beginPath();
-    ctx.arc(280, 80, 25, 0, Math.PI * 2);
-    ctx.arc(315, 75, 35, 0, Math.PI * 2);
-    ctx.arc(350, 80, 25, 0, Math.PI * 2);
-    ctx.fill();
+        ctx.beginPath();
+        ctx.arc(offset + 280, 80, 25, 0, Math.PI * 2);
+        ctx.arc(offset + 315, 75, 35, 0, Math.PI * 2);
+        ctx.arc(offset + 350, 80, 25, 0, Math.PI * 2);
+        ctx.fill();
+    }
 
-    // Ngọn đồi xanh lá phía dưới (như ảnh Google Floats)
-    ctx.fillStyle = '#65a30d'; // Màu xanh đồi
-    ctx.beginPath();
-    ctx.arc(120, 720, 250, 0, Math.PI * 2);
-    ctx.fill();
+    // 3. Ngọn đồi xanh cuộn trôi bên dưới
+    for (let offset of [bgHillX, bgHillX + 400]) {
+        ctx.fillStyle = '#65a30d';
+        ctx.beginPath();
+        ctx.arc(offset + 120, 720, 250, 0, Math.PI * 2);
+        ctx.fill();
 
-    ctx.fillStyle = '#4d7c0f'; // Ngọn đồi phụ
-    ctx.beginPath();
-    ctx.arc(340, 700, 220, 0, Math.PI * 2);
-    ctx.fill();
+        ctx.fillStyle = '#4d7c0f';
+        ctx.beginPath();
+        ctx.arc(offset + 340, 700, 220, 0, Math.PI * 2);
+        ctx.fill();
+    }
 }
 
 // --- VẼ NHÂN VẬT ĐÁM MÂY CẦM DÙ ---
@@ -166,22 +177,19 @@ function drawPlayer(x, y) {
     ctx.stroke();
 }
 
-// --- 1. CON QUẠ ĐEN (KÍCH THƯỚC TO & THIẾT KẾ MỚI) ---
+// --- 1. CON QUẠ ĐEN ---
 function drawCrow(x, y, frame) {
-    let wingOffset = Math.sin(frame * 0.15) * 12; // Cánh vỗ sinh động
+    let wingOffset = Math.sin(frame * 0.18) * 12;
 
-    // Thân quạ
     ctx.fillStyle = '#0f172a';
     ctx.beginPath();
     ctx.ellipse(x + 30, y + 25, 22, 15, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Đầu quạ
     ctx.beginPath();
     ctx.arc(x + 12, y + 18, 12, 0, Math.PI * 2);
     ctx.fill();
 
-    // Mỏ quạ nhọn
     ctx.fillStyle = '#f97316';
     ctx.beginPath();
     ctx.moveTo(x + 4, y + 15);
@@ -190,13 +198,11 @@ function drawCrow(x, y, frame) {
     ctx.closePath();
     ctx.fill();
 
-    // Mắt quạ đỏ ngầu
     ctx.fillStyle = '#ef4444';
     ctx.beginPath();
     ctx.arc(x + 10, y + 15, 3.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // Cánh quạ đen to vỗ
     ctx.fillStyle = '#1e293b';
     ctx.beginPath();
     ctx.moveTo(x + 25, y + 20);
@@ -204,7 +210,6 @@ function drawCrow(x, y, frame) {
     ctx.quadraticCurveTo(x + 35, y + 25, x + 25, y + 20);
     ctx.fill();
 
-    // Đuôi quạ
     ctx.fillStyle = '#0f172a';
     ctx.beginPath();
     ctx.moveTo(x + 48, y + 20);
@@ -214,9 +219,8 @@ function drawCrow(x, y, frame) {
     ctx.fill();
 }
 
-// --- 2. ĐÁM MÂY ĐIỆN (KÍCH THƯỚC TO) ---
+// --- 2. ĐÁM MÂY ĐIỆN ---
 function drawThunderCloud(x, y) {
-    // Thân mây xám sẫm to
     ctx.fillStyle = '#334155';
     ctx.beginPath();
     ctx.arc(x + 20, y + 25, 18, 0, Math.PI * 2);
@@ -224,7 +228,6 @@ function drawThunderCloud(x, y) {
     ctx.arc(x + 52, y + 25, 18, 0, Math.PI * 2);
     ctx.fill();
 
-    // Tia sét to sắc nét
     ctx.fillStyle = '#facc15';
     ctx.beginPath();
     ctx.moveTo(x + 36, y + 32);
@@ -243,19 +246,22 @@ function update() {
     cloud.velocity += cloud.gravity;
     cloud.y += cloud.velocity;
 
-    // Rơi đụng đồi hoặc bay đụng trần
     if (cloud.y + cloud.height > canvas.height - 50 || cloud.y < -10) {
         gameOver = true;
         playHitSound();
     }
 
     frameCount++;
-    // Sinh chướng ngại vật ngẫu nhiên
-    if (frameCount % 80 === 0) {
+
+    // TĂNG ĐIỂM SỐ NHANH HƠN: Cứ mỗi 10 frame bay là cộng 1 điểm
+    if (frameCount % 10 === 0) {
+        score += 1;
+    }
+
+    // Sinh chướng ngại vật
+    if (frameCount % 75 === 0) {
         let type = Math.random() > 0.5 ? 'crow' : 'cloud';
         let obsY = Math.floor(Math.random() * (canvas.height - 220)) + 40;
-        
-        // Kích thước chướng ngại vật TO NGHỆ THUẬT (65x50)
         obstacles.push({
             x: canvas.width,
             y: obsY,
@@ -267,9 +273,8 @@ function update() {
 
     // Di chuyển & va chạm
     for (let i = 0; i < obstacles.length; i++) {
-        obstacles[i].x -= 3.8;
+        obstacles[i].x -= 4.0;
 
-        // Xử lý va chạm
         if (cloud.x + 10 < obstacles[i].x + obstacles[i].width &&
             cloud.x + cloud.width - 10 > obstacles[i].x &&
             cloud.y + 5 < obstacles[i].y + obstacles[i].height &&
@@ -279,10 +284,10 @@ function update() {
         }
     }
 
-    // Vượt qua chướng ngại vật -> Cộng điểm + Phát tiếng
+    // Điểm thưởng khi vượt qua 1 chướng ngại vật (+10 điểm)
     if (obstacles.length > 0 && obstacles[0].x < -70) {
         obstacles.shift();
-        score++;
+        score += 10;
         playScoreSound();
     }
 }
@@ -293,7 +298,6 @@ function draw() {
     drawBackground();
     drawPlayer(cloud.x, cloud.y);
 
-    // Vẽ chướng ngại vật
     obstacles.forEach(obs => {
         if (obs.type === 'crow') {
             drawCrow(obs.x, obs.y, frameCount);
@@ -302,14 +306,14 @@ function draw() {
         }
     });
 
-    // Hiển thị Điểm số đẹp dạng Google
+    // Bảng điểm định dạng số 6 chữ số như bản gốc (ví dụ: 000150)
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 26px monospace';
+    ctx.font = 'bold 28px monospace';
     ctx.textAlign = 'right';
     ctx.shadowColor = 'rgba(0,0,0,0.3)';
     ctx.shadowBlur = 4;
-    ctx.fillText('SCORE ' + String(score).padStart(5, '0'), canvas.width - 20, 45);
-    ctx.shadowBlur = 0; // Reset hiệu ứng shadow
+    ctx.fillText(String(score).padStart(6, '0'), canvas.width - 20, 45);
+    ctx.shadowBlur = 0;
 
     if (!gameStarted) {
         ctx.fillStyle = 'rgba(0,0,0,0.45)';

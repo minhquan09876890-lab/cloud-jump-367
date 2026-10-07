@@ -11,7 +11,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("☁️ Trò Chơi Đám Mây Bay (Google Floats)")
-st.caption("💻 **Màn hình ngang Laptop** | 🌄 **Đồi nhấp nhô cao thấp đậm nhạt** | ☁️ **Mây thiết kế mềm mại**")
+st.caption("💻 **Màn hình ngang Laptop** | ☁️ **Mây nền to nhỏ dày dặn** | ☁️ **Nhân vật đám mây nguyên bản**")
 
 game_html = """
 <!DOCTYPE html>
@@ -85,7 +85,7 @@ function resizeCanvas() {
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
-let cloud = { x: 100, y: 180, width: 60, height: 42, gravity: 0.35, lift: -7, velocity: 0, rotation: 0 };
+let cloud = { x: 100, y: 180, width: 55, height: 40, gravity: 0.35, lift: -7, velocity: 0, rotation: 0 };
 let obstacles = [];
 let windParticles = [];
 let frameCount = 0;
@@ -98,7 +98,6 @@ let shakeTime = 0;
 let droppedUmbrella = { x: 0, y: 0, vx: 0, vy: 0, rot: 0 };
 
 let bgCloudX = 0;
-let bgHillFarX = 0;
 let bgHillNearX = 0;
 
 // --- HỆ THỐNG ÂM THANH & NHẠC NỀN ---
@@ -198,8 +197,8 @@ function triggerGameOver() {
     playHitSound();
 
     droppedUmbrella = {
-        x: cloud.x + 30,
-        y: cloud.y - 10,
+        x: cloud.x + 28,
+        y: cloud.y - 8,
         vx: 3 + Math.random() * 2,
         vy: -5,
         rot: 0
@@ -237,126 +236,109 @@ window.addEventListener('keydown', (e) => { if (e.code === 'Space') handleInput(
 canvas.addEventListener('click', handleInput);
 canvas.addEventListener('touchstart', handleInput, { passive: false });
 
-// --- VẼ ĐỒI NÚI (ĐỒI CAO/THẤP - ĐẬM/NHẠT) & MÂY NỀN MỚI ---
+// --- VẼ MÂY PHÍA SAU (TO NHỎ & DÀY HƠN) VÀ ĐỒI THẤP ---
 function drawBackground() {
     if (gameStarted && !gameOver) {
-        bgCloudX = (bgCloudX - 0.5) % GAME_WIDTH;
-        bgHillFarX = (bgHillFarX - 1.0) % GAME_WIDTH;
-        bgHillNearX = (bgHillNearX - 2.2) % GAME_WIDTH;
+        bgCloudX = (bgCloudX - 0.7) % GAME_WIDTH;
+        bgHillNearX = (bgHillNearX - 2.0) % GAME_WIDTH;
     }
 
-    // 1. Mây nền trôi (Thiết kế bồng bềnh hơn)
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    // Mây nền phía sau (Thiết kế dày, nhiều khối to nhỏ xen kẽ)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
     for (let offset of [bgCloudX, bgCloudX + GAME_WIDTH]) {
-        // Cụm mây xa 1
+        // Cụm mây 1 (To & Dày)
         ctx.beginPath();
-        ctx.arc(offset + 100, 60, 22, 0, Math.PI * 2);
-        ctx.arc(offset + 130, 50, 30, 0, Math.PI * 2);
-        ctx.arc(offset + 165, 60, 24, 0, Math.PI * 2);
+        ctx.arc(offset + 80, 70, 35, 0, Math.PI * 2);
+        ctx.arc(offset + 120, 50, 48, 0, Math.PI * 2);
+        ctx.arc(offset + 170, 65, 38, 0, Math.PI * 2);
+        ctx.arc(offset + 210, 80, 28, 0, Math.PI * 2);
         ctx.fill();
 
-        // Cụm mây xa 2
+        // Cụm mây 2 (Nhỏ & Nhẹ nhàng)
         ctx.beginPath();
-        ctx.arc(offset + 500, 90, 20, 0, Math.PI * 2);
-        ctx.arc(offset + 530, 80, 28, 0, Math.PI * 2);
-        ctx.arc(offset + 560, 90, 22, 0, Math.PI * 2);
+        ctx.arc(offset + 350, 110, 22, 0, Math.PI * 2);
+        ctx.arc(offset + 380, 95, 30, 0, Math.PI * 2);
+        ctx.arc(offset + 415, 110, 24, 0, Math.PI * 2);
         ctx.fill();
-    }
 
-    // 2. Dãy đồi xa (ĐỒI CAO - NHẠT MÀU - XANH SƯƠNG)
-    ctx.fillStyle = '#86efac'; // Màu xanh nhạt tươi sáng
-    for (let offset of [bgHillFarX, bgHillFarX + GAME_WIDTH]) {
+        // Cụm mây 3 (Cụm khổng lồ dày dặn ở xa)
         ctx.beginPath();
-        // Đồi cao 1
-        ctx.arc(offset + GAME_WIDTH * 0.2, GAME_HEIGHT + 180, GAME_WIDTH * 0.38, 0, Math.PI * 2);
-        // Đồi cao 2
-        ctx.arc(offset + GAME_WIDTH * 0.7, GAME_HEIGHT + 210, GAME_WIDTH * 0.42, 0, Math.PI * 2);
+        ctx.arc(offset + 560, 60, 40, 0, Math.PI * 2);
+        ctx.arc(offset + 610, 40, 55, 0, Math.PI * 2);
+        ctx.arc(offset + 670, 55, 42, 0, Math.PI * 2);
+        ctx.arc(offset + 720, 75, 30, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    // 3. Dãy đồi gần (ĐỒI THẤP HƠN - ĐẬM MÀU - XANH LÁ CÂY ĐẬM)
-    ctx.fillStyle = '#15803d'; // Màu xanh lá cây đậm nét
+    // Chỉ giữ lại Đồi thấp phía trước (Đã xóa đồi to phía sau)
+    ctx.fillStyle = '#15803d';
     for (let offset of [bgHillNearX, bgHillNearX + GAME_WIDTH]) {
         ctx.beginPath();
-        // Đồi thấp 1
-        ctx.arc(offset + GAME_WIDTH * 0.05, GAME_HEIGHT + 230, GAME_WIDTH * 0.32, 0, Math.PI * 2);
-        // Đồi thấp 2
-        ctx.arc(offset + GAME_WIDTH * 0.45, GAME_HEIGHT + 250, GAME_WIDTH * 0.35, 0, Math.PI * 2);
-        // Đồi thấp 3
-        ctx.arc(offset + GAME_WIDTH * 0.85, GAME_HEIGHT + 240, GAME_WIDTH * 0.3, 0, Math.PI * 2);
+        ctx.arc(offset + GAME_WIDTH * 0.1, GAME_HEIGHT + 240, GAME_WIDTH * 0.35, 0, Math.PI * 2);
+        ctx.arc(offset + GAME_WIDTH * 0.5, GAME_HEIGHT + 255, GAME_WIDTH * 0.38, 0, Math.PI * 2);
+        ctx.arc(offset + GAME_WIDTH * 0.88, GAME_HEIGHT + 245, GAME_WIDTH * 0.32, 0, Math.PI * 2);
         ctx.fill();
     }
 }
 
-// --- VẼ ĐÁM MÂY NHÂN VẬT (SỬA LẠI ĐẸP & MỀM MẠI HƠN) ---
+// --- KHÔI PHỤC NHÂN VẬT ĐÁM MÂY NGUYÊN BẢN ---
 function drawPlayer(x, y) {
     ctx.save();
-    ctx.translate(x + 30, y + 21);
+    ctx.translate(x + 28, y + 20);
     ctx.rotate(cloud.rotation);
-    ctx.translate(-(x + 30), -(y + 21));
+    ctx.translate(-(x + 28), -(y + 20));
 
-    // Cái Ô vàng nhỏ nhắn phía trên đám mây
+    // Cái Ô màu vàng ban đầu
     if (!gameOver) {
         ctx.fillStyle = '#f59e0b';
         ctx.beginPath();
-        ctx.arc(x + 30, y - 8, 18, Math.PI, 0);
+        ctx.arc(x + 28, y - 8, 20, Math.PI, 0);
         ctx.fill();
         ctx.strokeStyle = '#b45309';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(x + 30, y - 8);
-        ctx.lineTo(x + 30, y + 8);
+        ctx.moveTo(x + 28, y - 8);
+        ctx.lineTo(x + 28, y + 10);
         ctx.stroke();
     }
 
-    // Thân Đám mây (Vẽ các đường cong bóng mịn)
-    ctx.fillStyle = '#ffffff';
+    // Thân Đám Mây Nguyên Bản
+    ctx.fillStyle = 'white';
     ctx.beginPath();
-    ctx.arc(x + 16, y + 24, 14, 0, Math.PI * 2);
-    ctx.arc(x + 30, y + 15, 18, 0, Math.PI * 2);
-    ctx.arc(x + 45, y + 24, 14, 0, Math.PI * 2);
-    ctx.arc(x + 23, y + 28, 12, 0, Math.PI * 2);
-    ctx.arc(x + 38, y + 28, 12, 0, Math.PI * 2);
+    ctx.arc(x + 15, y + 20, 14, 0, Math.PI * 2);
+    ctx.arc(x + 28, y + 12, 18, 0, Math.PI * 2);
+    ctx.arc(x + 42, y + 20, 14, 0, Math.PI * 2);
     ctx.fill();
 
-    // Mắt và Miệng Nhân Vật
+    // Mắt và Miệng ban đầu
     if (gameOver) {
         ctx.strokeStyle = '#0f172a';
         ctx.lineWidth = 2;
 
         ctx.beginPath();
-        ctx.moveTo(x + 22, y + 16); ctx.lineTo(x + 28, y + 22);
-        ctx.moveTo(x + 28, y + 16); ctx.lineTo(x + 22, y + 22);
+        ctx.moveTo(x + 20, y + 13); ctx.lineTo(x + 26, y + 19);
+        ctx.moveTo(x + 26, y + 13); ctx.lineTo(x + 20, y + 19);
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.moveTo(x + 32, y + 16); ctx.lineTo(x + 38, y + 22);
-        ctx.moveTo(x + 38, y + 16); ctx.lineTo(x + 32, y + 22);
+        ctx.moveTo(x + 30, y + 13); ctx.lineTo(x + 36, y + 19);
+        ctx.moveTo(x + 36, y + 13); ctx.lineTo(x + 30, y + 19);
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.arc(x + 30, y + 27, 4, Math.PI, 0);
+        ctx.arc(x + 28, y + 24, 4, Math.PI, 0);
         ctx.stroke();
     } else {
-        // Mắt đen xoe tròn
         ctx.fillStyle = '#0f172a';
         ctx.beginPath();
-        ctx.arc(x + 24, y + 19, 2.5, 0, Math.PI * 2);
-        ctx.arc(x + 36, y + 19, 2.5, 0, Math.PI * 2);
+        ctx.arc(x + 23, y + 16, 2.5, 0, Math.PI * 2);
+        ctx.arc(x + 33, y + 16, 2.5, 0, Math.PI * 2);
         ctx.fill();
 
-        // 2 Má hồng dễ thương
-        ctx.fillStyle = 'rgba(f4, 63, 94, 0.35)';
-        ctx.beginPath();
-        ctx.arc(x + 20, y + 23, 3.5, 0, Math.PI * 2);
-        ctx.arc(x + 40, y + 23, 3.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Nụ cười
         ctx.strokeStyle = '#0f172a';
-        ctx.lineWidth = 1.8;
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(x + 30, y + 21, 4, 0, Math.PI, false);
+        ctx.arc(x + 28, y + 20, 4, 0, Math.PI, false);
         ctx.stroke();
     }
 
@@ -372,14 +354,14 @@ function drawDroppedUmbrella() {
 
     ctx.fillStyle = '#f59e0b';
     ctx.beginPath();
-    ctx.arc(0, 0, 18, Math.PI, 0);
+    ctx.arc(0, 0, 20, Math.PI, 0);
     ctx.fill();
 
     ctx.strokeStyle = '#b45309';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.lineTo(0, 16);
+    ctx.lineTo(0, 18);
     ctx.stroke();
 
     ctx.restore();
@@ -466,7 +448,6 @@ function update() {
     cloud.y += cloud.velocity;
     cloud.rotation = Math.min(Math.PI / 6, Math.max(-Math.PI / 6, cloud.velocity * 0.05));
 
-    // Ranh giới chạm đất / va chạm
     if (cloud.y + cloud.height > GAME_HEIGHT - 25 || cloud.y < -10) {
         triggerGameOver();
     }
@@ -476,7 +457,7 @@ function update() {
 
     if (frameCount % 70 === 0) {
         let type = Math.random() > 0.5 ? 'crow' : 'cloud';
-        let obsY = Math.floor(Math.random() * (GAME_HEIGHT - 200)) + 30;
+        let obsY = Math.floor(Math.random() * (GAME_HEIGHT - 180)) + 30;
         obstacles.push({
             x: GAME_WIDTH,
             y: obsY,

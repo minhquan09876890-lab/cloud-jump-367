@@ -5,14 +5,13 @@ st.set_page_config(page_title="Google Floats Game", page_icon="☁️", layout="
 
 st.markdown("""
     <style>
-        /* Tối ưu khung chứa trên PC & Laptop */
         .block-container { padding-top: 1rem; padding-bottom: 1rem; max-width: 1200px; }
         iframe { display: block; margin: 0 auto; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
     </style>
 """, unsafe_allow_html=True)
 
 st.title("☁️ Trò Chơi Đám Mây Bay (Google Floats)")
-st.caption("💻 **Màn hình ngang cho Laptop/PC** | 📱 **Tự ôm sát dọc cho Điện thoại** | 🔊 Nút âm thanh ở góc phải màn hình game")
+st.caption("💻 **Màn hình ngang Laptop** | 🌄 **Đồi nhấp nhô cao thấp đậm nhạt** | ☁️ **Mây thiết kế mềm mại**")
 
 game_html = """
 <!DOCTYPE html>
@@ -43,18 +42,18 @@ game_html = """
     #gameContainer { 
         position: relative; 
         width: 100%; 
-        max-width: 960px; /* Tối ưu màn hình ngang cho Laptop */
+        max-width: 960px; 
         height: 100vh; 
-        max-height: 540px; /* Tỉ lệ 16:9 chuẩn Game PC */
+        max-height: 540px; 
         overflow: hidden; 
         border-radius: 16px; 
         box-shadow: 0 12px 32px rgba(2, 132, 199, 0.25);
-        background: linear-gradient(to bottom, #0284c7 0%, #38bdf8 60%, #bae6fd 100%);
+        background: linear-gradient(to bottom, #0284c7 0%, #38bdf8 65%, #bae6fd 100%);
     }
     @media (max-width: 600px) {
         #gameContainer {
             max-width: 100%;
-            max-height: 100vh; /* Điện thoại tự động dùng màn hình dọc */
+            max-height: 100vh;
         }
     }
     canvas { 
@@ -86,7 +85,7 @@ function resizeCanvas() {
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
-let cloud = { x: 100, y: 200, width: 55, height: 40, gravity: 0.35, lift: -7, velocity: 0, rotation: 0 };
+let cloud = { x: 100, y: 180, width: 60, height: 42, gravity: 0.35, lift: -7, velocity: 0, rotation: 0 };
 let obstacles = [];
 let windParticles = [];
 let frameCount = 0;
@@ -99,15 +98,15 @@ let shakeTime = 0;
 let droppedUmbrella = { x: 0, y: 0, vx: 0, vy: 0, rot: 0 };
 
 let bgCloudX = 0;
-let bgHillX = 0;
+let bgHillFarX = 0;
+let bgHillNearX = 0;
 
-// --- HỆ THỐNG ÂM THANH & NHẠC NỀN (WEB AUDIO API) ---
+// --- HỆ THỐNG ÂM THANH & NHẠC NỀN ---
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
 let bgmTimer = null;
 let bgmNoteIndex = 0;
 
-// Giai điệu nhạc nền 8-bit vui tươi (Tần số nốt nhạc)
 const bgmMelody = [
     261.63, 329.63, 392.00, 523.25, 392.00, 329.63,
     293.66, 349.23, 440.00, 587.33, 440.00, 349.23,
@@ -116,12 +115,8 @@ const bgmMelody = [
 ];
 
 function initAudio() {
-    if (!audioCtx) {
-        audioCtx = new AudioCtx();
-    }
-    if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-    }
+    if (!audioCtx) audioCtx = new AudioCtx();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
 }
 
 function startBGM() {
@@ -129,23 +124,17 @@ function startBGM() {
     bgmNoteIndex = 0;
     bgmTimer = setInterval(() => {
         if (!gameStarted || gameOver || isMuted || !audioCtx) return;
-        
         let freq = bgmMelody[bgmNoteIndex];
         let osc = audioCtx.createOscillator();
         let gain = audioCtx.createGain();
-        
-        osc.type = 'square'; // Âm thanh 8-bit chiptune
+        osc.type = 'square';
         osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        
-        gain.gain.setValueAtTime(0.03, audioCtx.currentTime); // Nhạc nền nhỏ vừa phải
+        gain.gain.setValueAtTime(0.025, audioCtx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.18);
-        
         osc.connect(gain);
         gain.connect(audioCtx.destination);
-        
         osc.start();
         osc.stop(audioCtx.currentTime + 0.18);
-        
         bgmNoteIndex = (bgmNoteIndex + 1) % bgmMelody.length;
     }, 200);
 }
@@ -162,9 +151,9 @@ function playJumpSound() {
     let osc = audioCtx.createOscillator();
     let gain = audioCtx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(300, audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
-    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    osc.frequency.setValueAtTime(320, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(640, audioCtx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
     gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
     osc.connect(gain);
     gain.connect(audioCtx.destination);
@@ -179,7 +168,7 @@ function playScoreSound() {
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
     osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.08);
-    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
     gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
     osc.connect(gain);
     gain.connect(audioCtx.destination);
@@ -194,7 +183,7 @@ function playHitSound() {
     osc.type = 'sawtooth';
     osc.frequency.setValueAtTime(180, audioCtx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.3);
-    gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
     gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
     osc.connect(gain);
     gain.connect(audioCtx.destination);
@@ -209,8 +198,8 @@ function triggerGameOver() {
     playHitSound();
 
     droppedUmbrella = {
-        x: cloud.x + 28,
-        y: cloud.y - 8,
+        x: cloud.x + 30,
+        y: cloud.y - 10,
         vx: 3 + Math.random() * 2,
         vy: -5,
         rot: 0
@@ -218,9 +207,8 @@ function triggerGameOver() {
 }
 
 function handleInput(e) {
-    if (e && e.target && e.target.id === 'muteBtn') return; // Không nhảy khi bấm nút mute
+    if (e && e.target && e.target.id === 'muteBtn') return;
     if (e) e.preventDefault();
-    
     initAudio();
     
     if (gameOver) { resetGame(); return; }
@@ -245,44 +233,134 @@ function handleInput(e) {
     }
 }
 
-// Bắt các thao tác điều khiển
 window.addEventListener('keydown', (e) => { if (e.code === 'Space') handleInput(e); });
 canvas.addEventListener('click', handleInput);
 canvas.addEventListener('touchstart', handleInput, { passive: false });
 
-// --- VẼ MÔI TRƯỜNG & CHUYỂN ĐỘNG NỀN ---
+// --- VẼ ĐỒI NÚI (ĐỒI CAO/THẤP - ĐẬM/NHẠT) & MÂY NỀN MỚI ---
 function drawBackground() {
     if (gameStarted && !gameOver) {
-        bgCloudX = (bgCloudX - 0.8) % GAME_WIDTH;
-        bgHillX = (bgHillX - 2.0) % GAME_WIDTH;
+        bgCloudX = (bgCloudX - 0.5) % GAME_WIDTH;
+        bgHillFarX = (bgHillFarX - 1.0) % GAME_WIDTH;
+        bgHillNearX = (bgHillNearX - 2.2) % GAME_WIDTH;
     }
 
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+    // 1. Mây nền trôi (Thiết kế bồng bềnh hơn)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
     for (let offset of [bgCloudX, bgCloudX + GAME_WIDTH]) {
+        // Cụm mây xa 1
         ctx.beginPath();
-        ctx.arc(offset + GAME_WIDTH * 0.15, 50, 30, 0, Math.PI * 2);
-        ctx.arc(offset + GAME_WIDTH * 0.25, 45, 40, 0, Math.PI * 2);
-        ctx.arc(offset + GAME_WIDTH * 0.35, 50, 30, 0, Math.PI * 2);
+        ctx.arc(offset + 100, 60, 22, 0, Math.PI * 2);
+        ctx.arc(offset + 130, 50, 30, 0, Math.PI * 2);
+        ctx.arc(offset + 165, 60, 24, 0, Math.PI * 2);
         ctx.fill();
 
+        // Cụm mây xa 2
         ctx.beginPath();
-        ctx.arc(offset + GAME_WIDTH * 0.65, 80, 25, 0, Math.PI * 2);
-        ctx.arc(offset + GAME_WIDTH * 0.75, 75, 35, 0, Math.PI * 2);
-        ctx.arc(offset + GAME_WIDTH * 0.85, 80, 25, 0, Math.PI * 2);
+        ctx.arc(offset + 500, 90, 20, 0, Math.PI * 2);
+        ctx.arc(offset + 530, 80, 28, 0, Math.PI * 2);
+        ctx.arc(offset + 560, 90, 22, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    for (let offset of [bgHillX, bgHillX + GAME_WIDTH]) {
-        ctx.fillStyle = '#65a30d';
+    // 2. Dãy đồi xa (ĐỒI CAO - NHẠT MÀU - XANH SƯƠNG)
+    ctx.fillStyle = '#86efac'; // Màu xanh nhạt tươi sáng
+    for (let offset of [bgHillFarX, bgHillFarX + GAME_WIDTH]) {
         ctx.beginPath();
-        ctx.arc(offset + GAME_WIDTH * 0.3, GAME_HEIGHT + 140, GAME_WIDTH * 0.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = '#4d7c0f';
-        ctx.beginPath();
-        ctx.arc(offset + GAME_WIDTH * 0.8, GAME_HEIGHT + 120, GAME_WIDTH * 0.45, 0, Math.PI * 2);
+        // Đồi cao 1
+        ctx.arc(offset + GAME_WIDTH * 0.2, GAME_HEIGHT + 180, GAME_WIDTH * 0.38, 0, Math.PI * 2);
+        // Đồi cao 2
+        ctx.arc(offset + GAME_WIDTH * 0.7, GAME_HEIGHT + 210, GAME_WIDTH * 0.42, 0, Math.PI * 2);
         ctx.fill();
     }
+
+    // 3. Dãy đồi gần (ĐỒI THẤP HƠN - ĐẬM MÀU - XANH LÁ CÂY ĐẬM)
+    ctx.fillStyle = '#15803d'; // Màu xanh lá cây đậm nét
+    for (let offset of [bgHillNearX, bgHillNearX + GAME_WIDTH]) {
+        ctx.beginPath();
+        // Đồi thấp 1
+        ctx.arc(offset + GAME_WIDTH * 0.05, GAME_HEIGHT + 230, GAME_WIDTH * 0.32, 0, Math.PI * 2);
+        // Đồi thấp 2
+        ctx.arc(offset + GAME_WIDTH * 0.45, GAME_HEIGHT + 250, GAME_WIDTH * 0.35, 0, Math.PI * 2);
+        // Đồi thấp 3
+        ctx.arc(offset + GAME_WIDTH * 0.85, GAME_HEIGHT + 240, GAME_WIDTH * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+// --- VẼ ĐÁM MÂY NHÂN VẬT (SỬA LẠI ĐẸP & MỀM MẠI HƠN) ---
+function drawPlayer(x, y) {
+    ctx.save();
+    ctx.translate(x + 30, y + 21);
+    ctx.rotate(cloud.rotation);
+    ctx.translate(-(x + 30), -(y + 21));
+
+    // Cái Ô vàng nhỏ nhắn phía trên đám mây
+    if (!gameOver) {
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(x + 30, y - 8, 18, Math.PI, 0);
+        ctx.fill();
+        ctx.strokeStyle = '#b45309';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x + 30, y - 8);
+        ctx.lineTo(x + 30, y + 8);
+        ctx.stroke();
+    }
+
+    // Thân Đám mây (Vẽ các đường cong bóng mịn)
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(x + 16, y + 24, 14, 0, Math.PI * 2);
+    ctx.arc(x + 30, y + 15, 18, 0, Math.PI * 2);
+    ctx.arc(x + 45, y + 24, 14, 0, Math.PI * 2);
+    ctx.arc(x + 23, y + 28, 12, 0, Math.PI * 2);
+    ctx.arc(x + 38, y + 28, 12, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Mắt và Miệng Nhân Vật
+    if (gameOver) {
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 2;
+
+        ctx.beginPath();
+        ctx.moveTo(x + 22, y + 16); ctx.lineTo(x + 28, y + 22);
+        ctx.moveTo(x + 28, y + 16); ctx.lineTo(x + 22, y + 22);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(x + 32, y + 16); ctx.lineTo(x + 38, y + 22);
+        ctx.moveTo(x + 38, y + 16); ctx.lineTo(x + 32, y + 22);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(x + 30, y + 27, 4, Math.PI, 0);
+        ctx.stroke();
+    } else {
+        // Mắt đen xoe tròn
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(x + 24, y + 19, 2.5, 0, Math.PI * 2);
+        ctx.arc(x + 36, y + 19, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 2 Má hồng dễ thương
+        ctx.fillStyle = 'rgba(f4, 63, 94, 0.35)';
+        ctx.beginPath();
+        ctx.arc(x + 20, y + 23, 3.5, 0, Math.PI * 2);
+        ctx.arc(x + 40, y + 23, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Nụ cười
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(x + 30, y + 21, 4, 0, Math.PI, false);
+        ctx.stroke();
+    }
+
+    ctx.restore();
 }
 
 function drawDroppedUmbrella() {
@@ -294,14 +372,14 @@ function drawDroppedUmbrella() {
 
     ctx.fillStyle = '#f59e0b';
     ctx.beginPath();
-    ctx.arc(0, 0, 20, Math.PI, 0);
+    ctx.arc(0, 0, 18, Math.PI, 0);
     ctx.fill();
 
     ctx.strokeStyle = '#b45309';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.lineTo(0, 18);
+    ctx.lineTo(0, 16);
     ctx.stroke();
 
     ctx.restore();
@@ -324,70 +402,8 @@ function drawWindParticles() {
         p.y += p.vy;
         p.life -= 0.05;
 
-        if (p.life <= 0) {
-            windParticles.splice(i, 1);
-        }
+        if (p.life <= 0) windParticles.splice(i, 1);
     }
-}
-
-function drawPlayer(x, y) {
-    ctx.save();
-    ctx.translate(x + 28, y + 20);
-    ctx.rotate(cloud.rotation);
-    ctx.translate(-(x + 28), -(y + 20));
-
-    if (!gameOver) {
-        ctx.fillStyle = '#f59e0b';
-        ctx.beginPath();
-        ctx.arc(x + 28, y - 8, 20, Math.PI, 0);
-        ctx.fill();
-        ctx.strokeStyle = '#b45309';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(x + 28, y - 8);
-        ctx.lineTo(x + 28, y + 10);
-        ctx.stroke();
-    }
-
-    ctx.fillStyle = 'white';
-    ctx.beginPath();
-    ctx.arc(x + 15, y + 20, 14, 0, Math.PI * 2);
-    ctx.arc(x + 28, y + 12, 18, 0, Math.PI * 2);
-    ctx.arc(x + 42, y + 20, 14, 0, Math.PI * 2);
-    ctx.fill();
-
-    if (gameOver) {
-        ctx.strokeStyle = '#0f172a';
-        ctx.lineWidth = 2;
-
-        ctx.beginPath();
-        ctx.moveTo(x + 20, y + 13); ctx.lineTo(x + 26, y + 19);
-        ctx.moveTo(x + 26, y + 13); ctx.lineTo(x + 20, y + 19);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(x + 30, y + 13); ctx.lineTo(x + 36, y + 19);
-        ctx.moveTo(x + 36, y + 13); ctx.lineTo(x + 30, y + 19);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.arc(x + 28, y + 24, 4, Math.PI, 0);
-        ctx.stroke();
-    } else {
-        ctx.fillStyle = '#0f172a';
-        ctx.beginPath();
-        ctx.arc(x + 23, y + 16, 2.5, 0, Math.PI * 2);
-        ctx.arc(x + 33, y + 16, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.strokeStyle = '#0f172a';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(x + 28, y + 20, 4, 0, Math.PI, false);
-        ctx.stroke();
-    }
-
-    ctx.restore();
 }
 
 function drawCrow(x, y, frame) {
@@ -421,14 +437,6 @@ function drawCrow(x, y, frame) {
     ctx.quadraticCurveTo(x + 35, y - 5 + wingOffset, x + 50, y + 5 + wingOffset);
     ctx.quadraticCurveTo(x + 35, y + 25, x + 25, y + 20);
     ctx.fill();
-
-    ctx.fillStyle = '#0f172a';
-    ctx.beginPath();
-    ctx.moveTo(x + 48, y + 20);
-    ctx.lineTo(x + 65, y + 15);
-    ctx.lineTo(x + 62, y + 28);
-    ctx.closePath();
-    ctx.fill();
 }
 
 function drawThunderCloud(x, y) {
@@ -456,27 +464,24 @@ function update() {
 
     cloud.velocity += cloud.gravity;
     cloud.y += cloud.velocity;
-
     cloud.rotation = Math.min(Math.PI / 6, Math.max(-Math.PI / 6, cloud.velocity * 0.05));
 
-    if (cloud.y + cloud.height > GAME_HEIGHT - 30 || cloud.y < -10) {
+    // Ranh giới chạm đất / va chạm
+    if (cloud.y + cloud.height > GAME_HEIGHT - 25 || cloud.y < -10) {
         triggerGameOver();
     }
 
     frameCount++;
-
-    if (frameCount % 10 === 0) {
-        score += 1;
-    }
+    if (frameCount % 10 === 0) score += 1;
 
     if (frameCount % 70 === 0) {
         let type = Math.random() > 0.5 ? 'crow' : 'cloud';
-        let obsY = Math.floor(Math.random() * (GAME_HEIGHT - 180)) + 30;
+        let obsY = Math.floor(Math.random() * (GAME_HEIGHT - 200)) + 30;
         obstacles.push({
             x: GAME_WIDTH,
             y: obsY,
-            width: 65,
-            height: 50,
+            width: 60,
+            height: 48,
             type: type
         });
     }
@@ -500,7 +505,6 @@ function update() {
 }
 
 function drawUI() {
-    // Bảng điểm ở góc phải
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 28px monospace';
     ctx.textAlign = 'right';
@@ -509,12 +513,11 @@ function drawUI() {
     ctx.fillText(String(score).padStart(6, '0'), GAME_WIDTH - 20, 45);
     ctx.shadowBlur = 0;
 
-    // Biểu tượng Bật/Tắt Âm thanh
     ctx.font = '22px sans-serif';
     ctx.fillText(isMuted ? '🔇' : '🔊', GAME_WIDTH - 160, 42);
 
     if (!gameStarted) {
-        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
         ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
         ctx.fillStyle = 'white';
         ctx.font = 'bold 22px sans-serif';
@@ -545,7 +548,6 @@ function toggleMute(e) {
     }
 }
 
-// Bắt sự kiện click vào nút Âm thanh ở góc trên
 canvas.addEventListener('click', (e) => {
     let rect = canvas.getBoundingClientRect();
     let clickX = e.clientX - rect.left;
@@ -557,7 +559,6 @@ canvas.addEventListener('click', (e) => {
 
 function draw() {
     ctx.save();
-
     if (shakeTime > 0) {
         let dx = (Math.random() - 0.5) * 12;
         let dy = (Math.random() - 0.5) * 12;
@@ -573,15 +574,11 @@ function draw() {
     drawDroppedUmbrella();
 
     obstacles.forEach(obs => {
-        if (obs.type === 'crow') {
-            drawCrow(obs.x, obs.y, frameCount);
-        } else {
-            drawThunderCloud(obs.x, obs.y);
-        }
+        if (obs.type === 'crow') drawCrow(obs.x, obs.y, frameCount);
+        else drawThunderCloud(obs.x, obs.y);
     });
 
     drawUI();
-
     ctx.restore();
 }
 

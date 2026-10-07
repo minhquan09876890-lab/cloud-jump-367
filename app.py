@@ -26,14 +26,19 @@ game_html = """
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-let cloud = { x: 70, y: 250, width: 55, height: 40, gravity: 0.35, lift: -7, velocity: 0 };
+let cloud = { x: 70, y: 250, width: 55, height: 40, gravity: 0.35, lift: -7, velocity: 0, rotation: 0 };
 let obstacles = [];
+let windParticles = []; // Mảng chứa hiệu ứng gợn gió khi nhảy
 let frameCount = 0;
 let score = 0;
 let gameOver = false;
 let gameStarted = false;
 
-// Biến điều khiển chuyển động nền (Background Scrolling)
+// Biến hiệu ứng Thua cuộc & Rung màn hình
+let shakeTime = 0;
+let droppedUmbrella = { x: 0, y: 0, vx: 0, vy: 0, rot: 0 };
+
+// Biến điều khiển chuyển động nền
 let bgCloudX = 0;
 let bgHillX = 0;
 
@@ -92,26 +97,52 @@ function playHitSound() {
     osc.stop(audioCtx.currentTime + 0.3);
 }
 
+function triggerGameOver() {
+    gameOver = true;
+    shakeTime = 15; // Rung màn hình 15 frames
+    playHitSound();
+
+    // Khởi tạo hiệu ứng Dù bị văng ra khi thua
+    droppedUmbrella = {
+        x: cloud.x + 28,
+        y: cloud.y - 8,
+        vx: 3 + Math.random() * 2,
+        vy: -5,
+        rot: 0
+    };
+}
+
 function handleInput() {
     initAudio();
     if (gameOver) { resetGame(); return; }
     if (!gameStarted) { gameStarted = true; loop(); }
+    
     cloud.velocity = cloud.lift;
     playJumpSound();
+
+    // TẠO HIỆU ỨNG NHẢY: Thêm tia gió bên dưới đám mây
+    for (let i = 0; i < 4; i++) {
+        windParticles.push({
+            x: cloud.x + 15 + Math.random() * 30,
+            y: cloud.y + 35,
+            vx: -1 - Math.random() * 2,
+            vy: 2 + Math.random() * 2,
+            life: 1.0,
+            size: 3 + Math.random() * 4
+        });
+    }
 }
 
 window.addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); handleInput(); } });
 canvas.addEventListener('click', handleInput);
 
-// --- VẼ MÔI TRƯỜNG & PHÔNG NỀN CHUYỂN ĐỘNG (SCROLLING BACKGROUND) ---
+// --- VẼ MÔI TRƯỜNG & CHUYỂN ĐỘNG NỀN ---
 function drawBackground() {
-    // 1. Cập nhật vị trí nền khi đang chơi
     if (gameStarted && !gameOver) {
-        bgCloudX = (bgCloudX - 0.8) % 400; // Mây nền trôi chậm
-        bgHillX = (bgHillX - 2.0) % 400;   // Đồi trôi nhanh hơn
+        bgCloudX = (bgCloudX - 0.8) % 400;
+        bgHillX = (bgHillX - 2.0) % 400;
     }
 
-    // 2. Đám mây xa trên bầu trời (Cuộn lặp lại)
     ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
     for (let offset of [bgCloudX, bgCloudX + 400]) {
         ctx.beginPath();
@@ -127,7 +158,6 @@ function drawBackground() {
         ctx.fill();
     }
 
-    // 3. Ngọn đồi xanh cuộn trôi bên dưới
     for (let offset of [bgHillX, bgHillX + 400]) {
         ctx.fillStyle = '#65a30d';
         ctx.beginPath();
@@ -141,21 +171,77 @@ function drawBackground() {
     }
 }
 
-// --- VẼ NHÂN VẬT ĐÁM MÂY CẦM DÙ ---
-function drawPlayer(x, y) {
-    // Dù vàng
+// --- VẼ VẬT THỂ DÙ RỜI RẠC KHI THUA ---
+function drawDroppedUmbrella() {
+    if (!gameOver) return;
+
+    ctx.save();
+    ctx.translate(droppedUmbrella.x, droppedUmbrella.y);
+    ctx.rotate(droppedUmbrella.rot);
+
     ctx.fillStyle = '#f59e0b';
     ctx.beginPath();
-    ctx.arc(x + 28, y - 8, 20, Math.PI, 0);
+    ctx.arc(0, 0, 20, Math.PI, 0);
     ctx.fill();
+
     ctx.strokeStyle = '#b45309';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(x + 28, y - 8);
-    ctx.lineTo(x + 28, y + 10);
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, 18);
     ctx.stroke();
 
-    // Thân mây trắng
+    ctx.restore();
+
+    // Cập nhật vị trí rơi chiếc dù
+    droppedUmbrella.x += droppedUmbrella.vx;
+    droppedUmbrella.y += droppedUmbrella.vy;
+    droppedUmbrella.vy += 0.3; // Trọng lực dù
+    droppedUmbrella.rot += 0.15;
+}
+
+// --- VẼ HIỆU ỨNG TIA GIÓ KHI NHẢY ---
+function drawWindParticles() {
+    for (let i = windParticles.length - 1; i >= 0; i--) {
+        let p = windParticles[i];
+        ctx.fillStyle = `rgba(255, 255, 255, ${p.life})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.05;
+
+        if (p.life <= 0) {
+            windParticles.splice(i, 1);
+        }
+    }
+}
+
+// --- VẼ NHÂN VẬT ĐÁM MÂY (CÓ XOAY & MẮT KHI THUA) ---
+function drawPlayer(x, y) {
+    ctx.save();
+    // Xoay đám mây theo góc velocity
+    ctx.translate(x + 28, y + 20);
+    ctx.rotate(cloud.rotation);
+    ctx.translate(-(x + 28), -(y + 20));
+
+    // Nếu chưa thua thì vẽ Dù vàng gắn liền
+    if (!gameOver) {
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(x + 28, y - 8, 20, Math.PI, 0);
+        ctx.fill();
+        ctx.strokeStyle = '#b45309';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x + 28, y - 8);
+        ctx.lineTo(x + 28, y + 10);
+        ctx.stroke();
+    }
+
+    // Thân mây
     ctx.fillStyle = 'white';
     ctx.beginPath();
     ctx.arc(x + 15, y + 20, 14, 0, Math.PI * 2);
@@ -163,21 +249,47 @@ function drawPlayer(x, y) {
     ctx.arc(x + 42, y + 20, 14, 0, Math.PI * 2);
     ctx.fill();
 
-    // Mắt & Miệng
-    ctx.fillStyle = '#0f172a';
-    ctx.beginPath();
-    ctx.arc(x + 23, y + 16, 2.5, 0, Math.PI * 2);
-    ctx.arc(x + 33, y + 16, 2.5, 0, Math.PI * 2);
-    ctx.fill();
+    // VẼ MẮT VÀ MIỆNG
+    if (gameOver) {
+        // Mắt x-x khi thua
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 2;
 
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(x + 28, y + 20, 4, 0, Math.PI, false);
-    ctx.stroke();
+        // Mắt trái x
+        ctx.beginPath();
+        ctx.moveTo(x + 20, y + 13); ctx.lineTo(x + 26, y + 19);
+        ctx.moveTo(x + 26, y + 13); ctx.lineTo(x + 20, y + 19);
+        ctx.stroke();
+
+        // Mắt phải x
+        ctx.beginPath();
+        ctx.moveTo(x + 30, y + 13); ctx.lineTo(x + 36, y + 19);
+        ctx.moveTo(x + 36, y + 13); ctx.lineTo(x + 30, y + 19);
+        ctx.stroke();
+
+        // Miệng méo khi thua
+        ctx.beginPath();
+        ctx.arc(x + 28, y + 24, 4, Math.PI, 0);
+        ctx.stroke();
+    } else {
+        // Mắt tròn bình thường
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(x + 23, y + 16, 2.5, 0, Math.PI * 2);
+        ctx.arc(x + 33, y + 16, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(x + 28, y + 20, 4, 0, Math.PI, false);
+        ctx.stroke();
+    }
+
+    ctx.restore();
 }
 
-// --- 1. CON QUẠ ĐEN ---
+// --- CON QUẠ ĐEN ---
 function drawCrow(x, y, frame) {
     let wingOffset = Math.sin(frame * 0.18) * 12;
 
@@ -219,7 +331,7 @@ function drawCrow(x, y, frame) {
     ctx.fill();
 }
 
-// --- 2. ĐÁM MÂY ĐIỆN ---
+// --- ĐÁM MÂY ĐIỆN ---
 function drawThunderCloud(x, y) {
     ctx.fillStyle = '#334155';
     ctx.beginPath();
@@ -246,19 +358,19 @@ function update() {
     cloud.velocity += cloud.gravity;
     cloud.y += cloud.velocity;
 
+    // HIỆU ỨNG NGHIÊNG ĐÁM MÂY: Nghiêng lên khi bay, ngửa xuống khi rơi
+    cloud.rotation = Math.min(Math.PI / 6, Math.max(-Math.PI / 6, cloud.velocity * 0.05));
+
     if (cloud.y + cloud.height > canvas.height - 50 || cloud.y < -10) {
-        gameOver = true;
-        playHitSound();
+        triggerGameOver();
     }
 
     frameCount++;
 
-    // TĂNG ĐIỂM SỐ NHANH HƠN: Cứ mỗi 10 frame bay là cộng 1 điểm
     if (frameCount % 10 === 0) {
         score += 1;
     }
 
-    // Sinh chướng ngại vật
     if (frameCount % 75 === 0) {
         let type = Math.random() > 0.5 ? 'crow' : 'cloud';
         let obsY = Math.floor(Math.random() * (canvas.height - 220)) + 40;
@@ -271,7 +383,6 @@ function update() {
         });
     }
 
-    // Di chuyển & va chạm
     for (let i = 0; i < obstacles.length; i++) {
         obstacles[i].x -= 4.0;
 
@@ -279,12 +390,10 @@ function update() {
             cloud.x + cloud.width - 10 > obstacles[i].x &&
             cloud.y + 5 < obstacles[i].y + obstacles[i].height &&
             cloud.y + cloud.height - 5 > obstacles[i].y) {
-            gameOver = true;
-            playHitSound();
+            triggerGameOver();
         }
     }
 
-    // Điểm thưởng khi vượt qua 1 chướng ngại vật (+10 điểm)
     if (obstacles.length > 0 && obstacles[0].x < -70) {
         obstacles.shift();
         score += 10;
@@ -293,10 +402,22 @@ function update() {
 }
 
 function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+
+    // HIỆU ỨNG RUNG MÀN HÌNH (SCREEN SHAKE) KHI THUA
+    if (shakeTime > 0) {
+        let dx = (Math.random() - 0.5) * 12;
+        let dy = (Math.random() - 0.5) * 12;
+        ctx.translate(dx, dy);
+        shakeTime--;
+    }
+
+    ctx.clearRect(-20, -20, canvas.width + 40, canvas.height + 40);
 
     drawBackground();
+    drawWindParticles(); // Vẽ các gợn gió khi nhảy
     drawPlayer(cloud.x, cloud.y);
+    drawDroppedUmbrella(); // Vẽ dù rơi khi thua
 
     obstacles.forEach(obs => {
         if (obs.type === 'crow') {
@@ -306,7 +427,7 @@ function draw() {
         }
     });
 
-    // Bảng điểm định dạng số 6 chữ số như bản gốc (ví dụ: 000150)
+    // Điểm số
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 28px monospace';
     ctx.textAlign = 'right';
@@ -335,16 +456,21 @@ function draw() {
         ctx.fillText('Điểm số: ' + score, canvas.width / 2, canvas.height / 2 + 20);
         ctx.fillText('Click để CHƠI LẠI', canvas.width / 2, canvas.height / 2 + 60);
     }
+
+    ctx.restore();
 }
 
 function resetGame() {
     cloud.y = 250;
     cloud.velocity = 0;
+    cloud.rotation = 0;
     obstacles = [];
+    windParticles = [];
     score = 0;
     frameCount = 0;
     gameOver = false;
     gameStarted = true;
+    shakeTime = 0;
     loop();
 }
 

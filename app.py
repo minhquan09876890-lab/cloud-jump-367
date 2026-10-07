@@ -11,7 +11,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("☁️ Trò Chơi Đám Mây Bay (Google Floats)")
-st.caption("📱 **Tối ưu cực tốt cho Điện thoại & Máy tính** | Chạm nhẹ màn hình để bay!")
+st.caption("💻 **Phím SPACE hoặc Click chuột trên PC** | 📱 **Chạm màn hình trên Điện thoại**")
 
 game_html = """
 <!DOCTYPE html>
@@ -91,6 +91,7 @@ let cloud = { x: 80, y: 180, width: 55, height: 40, gravity: 0.32, lift: -6.5, v
 let obstacles = [];
 let windParticles = [];
 let frameCount = 0;
+let nextObstacleFrame = 60; // Frame tiếp theo xuất hiện vật cản ngẫu nhiên
 let score = 0;
 let gameOver = false;
 let gameStarted = false;
@@ -102,7 +103,7 @@ let droppedUmbrella = { x: 0, y: 0, vx: 0, vy: 0, rot: 0 };
 let bgCloudX = 0;
 let bgHillNearX = 0;
 
-// --- ÂM THANH ---
+// --- HỆ THỐNG ÂM THANH ---
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
 let bgmTimer = null;
@@ -207,9 +208,14 @@ function triggerGameOver() {
     };
 }
 
-// HÀM XỬ LÝ ĐIỀU KHIỂN ĐIỆN THOẠI / MÁY TÍNH
+// XỬ LÝ ĐIỀU KHIỂN (PHÍM SPACE / MOUSE / TOUCH)
 function handleInput(e) {
-    if (e) {
+    if (e && e.type === 'keydown') {
+        if (e.code !== 'Space') return;
+        e.preventDefault();
+    }
+
+    if (e && (e.type === 'mousedown' || e.type === 'touchstart')) {
         let rect = canvas.getBoundingClientRect();
         let clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
         let clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
@@ -217,7 +223,7 @@ function handleInput(e) {
         let x = clientX - rect.left;
         let y = clientY - rect.top;
 
-        // Bấm nút Âm thanh ở góc trên
+        // Bấm nút Âm thanh ở góc trên bên phải
         if (x > GAME_WIDTH - 70 && y < 60) {
             isMuted = !isMuted;
             if (isMuted) stopBGM();
@@ -252,7 +258,8 @@ function handleInput(e) {
     }
 }
 
-window.addEventListener('keydown', (e) => { if (e.code === 'Space') handleInput(e); });
+// Đăng ký sự kiện bàn phím & chuột/chạm
+window.addEventListener('keydown', handleInput, { passive: false });
 canvas.addEventListener('touchstart', handleInput, { passive: false });
 canvas.addEventListener('mousedown', handleInput);
 
@@ -262,7 +269,7 @@ function drawBackground() {
         bgHillNearX = (bgHillNearX - 2.0) % GAME_WIDTH;
     }
 
-    // Mây nền dày dặn
+    // Mây nền dày dặn to nhỏ
     ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
     for (let offset of [bgCloudX, bgCloudX + GAME_WIDTH]) {
         ctx.beginPath();
@@ -286,7 +293,7 @@ function drawBackground() {
         ctx.fill();
     }
 
-    // Đồi thấp
+    // Đồi thấp phía trước
     ctx.fillStyle = '#15803d';
     for (let offset of [bgHillNearX, bgHillNearX + GAME_WIDTH]) {
         ctx.beginPath();
@@ -466,9 +473,11 @@ function update() {
     frameCount++;
     if (frameCount % 10 === 0) score += 1;
 
-    if (frameCount % 75 === 0) {
+    // TẠO CHƯỚNG NGẠI VẬT NGẪU NHIÊN VỀ LOẠI, THỜI GIAN VÀ ĐỘ CAO
+    if (frameCount >= nextObstacleFrame) {
         let type = Math.random() > 0.5 ? 'crow' : 'cloud';
-        let obsY = Math.floor(Math.random() * (GAME_HEIGHT - 160)) + 30;
+        let obsY = Math.floor(Math.random() * (GAME_HEIGHT - 170)) + 30;
+        
         obstacles.push({
             x: GAME_WIDTH,
             y: obsY,
@@ -476,6 +485,10 @@ function update() {
             height: 40,
             type: type
         });
+
+        // Đặt ngẫu nhiên thời gian xuất hiện vật cản tiếp theo (khoảng 50 - 110 frames)
+        let randomInterval = Math.floor(Math.random() * 60) + 50;
+        nextObstacleFrame = frameCount + randomInterval;
     }
 
     for (let i = 0; i < obstacles.length; i++) {
@@ -497,7 +510,6 @@ function update() {
 }
 
 function drawUI() {
-    // Điểm số hiển thị góc phải
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 24px monospace';
     ctx.textAlign = 'right';
@@ -506,7 +518,7 @@ function drawUI() {
     ctx.fillText(String(score).padStart(6, '0'), GAME_WIDTH - 80, 38);
     ctx.shadowBlur = 0;
 
-    // Nút Âm Thanh To Góc Phải Trên
+    // Nút Bật/Tắt Âm thanh
     ctx.fillStyle = 'rgba(255,255,255,0.25)';
     ctx.beginPath();
     ctx.arc(GAME_WIDTH - 35, 30, 22, 0, Math.PI * 2);
@@ -521,7 +533,7 @@ function drawUI() {
         ctx.fillStyle = 'white';
         ctx.font = 'bold 20px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('👉 CHẠM MÀN HÌNH ĐỂ BẮT ĐẦU 👈', GAME_WIDTH / 2, GAME_HEIGHT / 2);
+        ctx.fillText('👉 BẤM SPACE HOẶC CHẠM ĐỂ BẮT ĐẦU 👈', GAME_WIDTH / 2, GAME_HEIGHT / 2);
     }
 
     if (gameOver) {
@@ -533,7 +545,7 @@ function drawUI() {
         ctx.fillText('GAME OVER!', GAME_WIDTH / 2, GAME_HEIGHT / 2 - 25);
         ctx.font = '18px sans-serif';
         ctx.fillText('Điểm của bạn: ' + score, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 15);
-        ctx.fillText('👉 Chạm vào màn hình để chơi lại', GAME_WIDTH / 2, GAME_HEIGHT / 2 + 55);
+        ctx.fillText('👉 Bấm Space hoặc Chạm để chơi lại', GAME_WIDTH / 2, GAME_HEIGHT / 2 + 55);
     }
 }
 
@@ -570,6 +582,7 @@ function resetGame() {
     windParticles = [];
     score = 0;
     frameCount = 0;
+    nextObstacleFrame = 60;
     gameOver = false;
     gameStarted = true;
     shakeTime = 0;

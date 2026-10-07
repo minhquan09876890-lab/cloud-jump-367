@@ -5,26 +5,27 @@ st.set_page_config(page_title="Google Floats Game", page_icon="☁️", layout="
 
 st.markdown("""
     <style>
-        .block-container { padding-top: 1rem; padding-bottom: 1rem; max-width: 1200px; }
+        .block-container { padding-top: 0.5rem; padding-bottom: 0.5rem; max-width: 1200px; }
         iframe { display: block; margin: 0 auto; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
     </style>
 """, unsafe_allow_html=True)
 
 st.title("☁️ Trò Chơi Đám Mây Bay (Google Floats)")
-st.caption("💻 **Màn hình ngang Laptop** | ☁️ **Mây nền to nhỏ dày dặn** | ☁️ **Nhân vật đám mây nguyên bản**")
+st.caption("📱 **Tối ưu cực tốt cho Điện thoại & Máy tính** | Chạm nhẹ màn hình để bay!")
 
 game_html = """
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <style>
     * {
         box-sizing: border-box;
         -webkit-touch-callout: none;
         -webkit-user-select: none;
         user-select: none;
+        touch-action: manipulation;
     }
     body, html { 
         margin: 0; 
@@ -32,12 +33,11 @@ game_html = """
         width: 100%; 
         height: 100%; 
         overflow: hidden; 
-        background-color: #f0f9ff; 
+        background-color: #0284c7; 
         display: flex; 
         justify-content: center; 
         align-items: center; 
         font-family: system-ui, -apple-system, sans-serif;
-        touch-action: manipulation;
     }
     #gameContainer { 
         position: relative; 
@@ -50,10 +50,12 @@ game_html = """
         box-shadow: 0 12px 32px rgba(2, 132, 199, 0.25);
         background: linear-gradient(to bottom, #0284c7 0%, #38bdf8 65%, #bae6fd 100%);
     }
-    @media (max-width: 600px) {
+    @media (max-width: 768px) {
         #gameContainer {
             max-width: 100%;
-            max-height: 100vh;
+            height: 80vh;
+            max-height: 600px;
+            border-radius: 12px;
         }
     }
     canvas { 
@@ -85,7 +87,7 @@ function resizeCanvas() {
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
-let cloud = { x: 100, y: 180, width: 55, height: 40, gravity: 0.35, lift: -7, velocity: 0, rotation: 0 };
+let cloud = { x: 80, y: 180, width: 55, height: 40, gravity: 0.32, lift: -6.5, velocity: 0, rotation: 0 };
 let obstacles = [];
 let windParticles = [];
 let frameCount = 0;
@@ -100,7 +102,7 @@ let droppedUmbrella = { x: 0, y: 0, vx: 0, vy: 0, rot: 0 };
 let bgCloudX = 0;
 let bgHillNearX = 0;
 
-// --- HỆ THỐNG ÂM THANH & NHẠC NỀN ---
+// --- ÂM THANH ---
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
 let bgmTimer = null;
@@ -192,7 +194,7 @@ function playHitSound() {
 
 function triggerGameOver() {
     gameOver = true;
-    shakeTime = 15;
+    shakeTime = 12;
     stopBGM();
     playHitSound();
 
@@ -205,9 +207,27 @@ function triggerGameOver() {
     };
 }
 
+// HÀM XỬ LÝ ĐIỀU KHIỂN ĐIỆN THOẠI / MÁY TÍNH
 function handleInput(e) {
-    if (e && e.target && e.target.id === 'muteBtn') return;
-    if (e) e.preventDefault();
+    if (e) {
+        let rect = canvas.getBoundingClientRect();
+        let clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+        let clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+        
+        let x = clientX - rect.left;
+        let y = clientY - rect.top;
+
+        // Bấm nút Âm thanh ở góc trên
+        if (x > GAME_WIDTH - 70 && y < 60) {
+            isMuted = !isMuted;
+            if (isMuted) stopBGM();
+            else if (gameStarted && !gameOver) startBGM();
+            if (e.cancelable) e.preventDefault();
+            return;
+        }
+    }
+
+    if (e && e.cancelable) e.preventDefault();
     initAudio();
     
     if (gameOver) { resetGame(); return; }
@@ -220,33 +240,31 @@ function handleInput(e) {
     cloud.velocity = cloud.lift;
     playJumpSound();
 
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 3; i++) {
         windParticles.push({
             x: cloud.x + 15 + Math.random() * 30,
             y: cloud.y + 35,
             vx: -1 - Math.random() * 2,
             vy: 2 + Math.random() * 2,
             life: 1.0,
-            size: 3 + Math.random() * 4
+            size: 3 + Math.random() * 3
         });
     }
 }
 
 window.addEventListener('keydown', (e) => { if (e.code === 'Space') handleInput(e); });
-canvas.addEventListener('click', handleInput);
 canvas.addEventListener('touchstart', handleInput, { passive: false });
+canvas.addEventListener('mousedown', handleInput);
 
-// --- VẼ MÂY PHÍA SAU (TO NHỎ & DÀY HƠN) VÀ ĐỒI THẤP ---
 function drawBackground() {
     if (gameStarted && !gameOver) {
         bgCloudX = (bgCloudX - 0.7) % GAME_WIDTH;
         bgHillNearX = (bgHillNearX - 2.0) % GAME_WIDTH;
     }
 
-    // Mây nền phía sau (Thiết kế dày, nhiều khối to nhỏ xen kẽ)
+    // Mây nền dày dặn
     ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
     for (let offset of [bgCloudX, bgCloudX + GAME_WIDTH]) {
-        // Cụm mây 1 (To & Dày)
         ctx.beginPath();
         ctx.arc(offset + 80, 70, 35, 0, Math.PI * 2);
         ctx.arc(offset + 120, 50, 48, 0, Math.PI * 2);
@@ -254,14 +272,12 @@ function drawBackground() {
         ctx.arc(offset + 210, 80, 28, 0, Math.PI * 2);
         ctx.fill();
 
-        // Cụm mây 2 (Nhỏ & Nhẹ nhàng)
         ctx.beginPath();
         ctx.arc(offset + 350, 110, 22, 0, Math.PI * 2);
         ctx.arc(offset + 380, 95, 30, 0, Math.PI * 2);
         ctx.arc(offset + 415, 110, 24, 0, Math.PI * 2);
         ctx.fill();
 
-        // Cụm mây 3 (Cụm khổng lồ dày dặn ở xa)
         ctx.beginPath();
         ctx.arc(offset + 560, 60, 40, 0, Math.PI * 2);
         ctx.arc(offset + 610, 40, 55, 0, Math.PI * 2);
@@ -270,7 +286,7 @@ function drawBackground() {
         ctx.fill();
     }
 
-    // Chỉ giữ lại Đồi thấp phía trước (Đã xóa đồi to phía sau)
+    // Đồi thấp
     ctx.fillStyle = '#15803d';
     for (let offset of [bgHillNearX, bgHillNearX + GAME_WIDTH]) {
         ctx.beginPath();
@@ -281,14 +297,13 @@ function drawBackground() {
     }
 }
 
-// --- KHÔI PHỤC NHÂN VẬT ĐÁM MÂY NGUYÊN BẢN ---
 function drawPlayer(x, y) {
     ctx.save();
     ctx.translate(x + 28, y + 20);
     ctx.rotate(cloud.rotation);
     ctx.translate(-(x + 28), -(y + 20));
 
-    // Cái Ô màu vàng ban đầu
+    // Cái Ô màu vàng
     if (!gameOver) {
         ctx.fillStyle = '#f59e0b';
         ctx.beginPath();
@@ -310,11 +325,10 @@ function drawPlayer(x, y) {
     ctx.arc(x + 42, y + 20, 14, 0, Math.PI * 2);
     ctx.fill();
 
-    // Mắt và Miệng ban đầu
+    // Mắt và Miệng
     if (gameOver) {
         ctx.strokeStyle = '#0f172a';
         ctx.lineWidth = 2;
-
         ctx.beginPath();
         ctx.moveTo(x + 20, y + 13); ctx.lineTo(x + 26, y + 19);
         ctx.moveTo(x + 26, y + 13); ctx.lineTo(x + 20, y + 19);
@@ -347,7 +361,6 @@ function drawPlayer(x, y) {
 
 function drawDroppedUmbrella() {
     if (!gameOver) return;
-
     ctx.save();
     ctx.translate(droppedUmbrella.x, droppedUmbrella.y);
     ctx.rotate(droppedUmbrella.rot);
@@ -363,7 +376,6 @@ function drawDroppedUmbrella() {
     ctx.moveTo(0, 0);
     ctx.lineTo(0, 18);
     ctx.stroke();
-
     ctx.restore();
 
     droppedUmbrella.x += droppedUmbrella.vx;
@@ -389,54 +401,53 @@ function drawWindParticles() {
 }
 
 function drawCrow(x, y, frame) {
-    let wingOffset = Math.sin(frame * 0.18) * 12;
-
+    let wingOffset = Math.sin(frame * 0.18) * 10;
     ctx.fillStyle = '#0f172a';
     ctx.beginPath();
-    ctx.ellipse(x + 30, y + 25, 22, 15, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + 25, y + 20, 18, 12, 0, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.beginPath();
-    ctx.arc(x + 12, y + 18, 12, 0, Math.PI * 2);
+    ctx.arc(x + 10, y + 15, 10, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.fillStyle = '#f97316';
     ctx.beginPath();
-    ctx.moveTo(x + 4, y + 15);
-    ctx.lineTo(x - 12, y + 20);
-    ctx.lineTo(x + 4, y + 24);
+    ctx.moveTo(x + 3, y + 12);
+    ctx.lineTo(x - 10, y + 16);
+    ctx.lineTo(x + 3, y + 20);
     ctx.closePath();
     ctx.fill();
 
     ctx.fillStyle = '#ef4444';
     ctx.beginPath();
-    ctx.arc(x + 10, y + 15, 3.5, 0, Math.PI * 2);
+    ctx.arc(x + 8, y + 13, 3, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.fillStyle = '#1e293b';
     ctx.beginPath();
-    ctx.moveTo(x + 25, y + 20);
-    ctx.quadraticCurveTo(x + 35, y - 5 + wingOffset, x + 50, y + 5 + wingOffset);
-    ctx.quadraticCurveTo(x + 35, y + 25, x + 25, y + 20);
+    ctx.moveTo(x + 20, y + 16);
+    ctx.quadraticCurveTo(x + 30, y - 5 + wingOffset, x + 42, y + 5 + wingOffset);
+    ctx.quadraticCurveTo(x + 30, y + 20, x + 20, y + 16);
     ctx.fill();
 }
 
 function drawThunderCloud(x, y) {
     ctx.fillStyle = '#334155';
     ctx.beginPath();
-    ctx.arc(x + 20, y + 25, 18, 0, Math.PI * 2);
-    ctx.arc(x + 35, y + 12, 22, 0, Math.PI * 2);
-    ctx.arc(x + 52, y + 25, 18, 0, Math.PI * 2);
+    ctx.arc(x + 18, y + 22, 16, 0, Math.PI * 2);
+    ctx.arc(x + 32, y + 10, 20, 0, Math.PI * 2);
+    ctx.arc(x + 48, y + 22, 16, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.fillStyle = '#facc15';
     ctx.beginPath();
-    ctx.moveTo(x + 36, y + 32);
-    ctx.lineTo(x + 24, y + 48);
-    ctx.lineTo(x + 32, y + 48);
-    ctx.lineTo(x + 22, y + 65);
-    ctx.lineTo(x + 42, y + 42);
-    ctx.lineTo(x + 34, y + 42);
+    ctx.moveTo(x + 32, y + 28);
+    ctx.lineTo(x + 22, y + 42);
+    ctx.lineTo(x + 29, y + 42);
+    ctx.lineTo(x + 20, y + 58);
+    ctx.lineTo(x + 38, y + 38);
+    ctx.lineTo(x + 30, y + 38);
     ctx.closePath();
     ctx.fill();
 }
@@ -448,37 +459,37 @@ function update() {
     cloud.y += cloud.velocity;
     cloud.rotation = Math.min(Math.PI / 6, Math.max(-Math.PI / 6, cloud.velocity * 0.05));
 
-    if (cloud.y + cloud.height > GAME_HEIGHT - 25 || cloud.y < -10) {
+    if (cloud.y + cloud.height > GAME_HEIGHT - 20 || cloud.y < -10) {
         triggerGameOver();
     }
 
     frameCount++;
     if (frameCount % 10 === 0) score += 1;
 
-    if (frameCount % 70 === 0) {
+    if (frameCount % 75 === 0) {
         let type = Math.random() > 0.5 ? 'crow' : 'cloud';
-        let obsY = Math.floor(Math.random() * (GAME_HEIGHT - 180)) + 30;
+        let obsY = Math.floor(Math.random() * (GAME_HEIGHT - 160)) + 30;
         obstacles.push({
             x: GAME_WIDTH,
             y: obsY,
-            width: 60,
-            height: 48,
+            width: 50,
+            height: 40,
             type: type
         });
     }
 
     for (let i = 0; i < obstacles.length; i++) {
-        obstacles[i].x -= 4.5;
+        obstacles[i].x -= 4.2;
 
-        if (cloud.x + 10 < obstacles[i].x + obstacles[i].width &&
-            cloud.x + cloud.width - 10 > obstacles[i].x &&
+        if (cloud.x + 8 < obstacles[i].x + obstacles[i].width &&
+            cloud.x + cloud.width - 8 > obstacles[i].x &&
             cloud.y + 5 < obstacles[i].y + obstacles[i].height &&
             cloud.y + cloud.height - 5 > obstacles[i].y) {
             triggerGameOver();
         }
     }
 
-    if (obstacles.length > 0 && obstacles[0].x < -70) {
+    if (obstacles.length > 0 && obstacles[0].x < -60) {
         obstacles.shift();
         score += 10;
         playScoreSound();
@@ -486,63 +497,51 @@ function update() {
 }
 
 function drawUI() {
+    // Điểm số hiển thị góc phải
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 28px monospace';
+    ctx.font = 'bold 24px monospace';
     ctx.textAlign = 'right';
     ctx.shadowColor = 'rgba(0,0,0,0.3)';
     ctx.shadowBlur = 4;
-    ctx.fillText(String(score).padStart(6, '0'), GAME_WIDTH - 20, 45);
+    ctx.fillText(String(score).padStart(6, '0'), GAME_WIDTH - 80, 38);
     ctx.shadowBlur = 0;
 
-    ctx.font = '22px sans-serif';
-    ctx.fillText(isMuted ? '🔇' : '🔊', GAME_WIDTH - 160, 42);
+    // Nút Âm Thanh To Góc Phải Trên
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.beginPath();
+    ctx.arc(GAME_WIDTH - 35, 30, 22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.font = '20px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(isMuted ? '🔇' : '🔊', GAME_WIDTH - 35, 37);
 
     if (!gameStarted) {
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
         ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
         ctx.fillStyle = 'white';
-        ctx.font = 'bold 22px sans-serif';
+        ctx.font = 'bold 20px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Nhấn Space hoặc Chạm màn hình để BẮT ĐẦU', GAME_WIDTH / 2, GAME_HEIGHT / 2);
+        ctx.fillText('👉 CHẠM MÀN HÌNH ĐỂ BẮT ĐẦU 👈', GAME_WIDTH / 2, GAME_HEIGHT / 2);
     }
 
     if (gameOver) {
-        ctx.fillStyle = 'rgba(225, 29, 72, 0.85)';
+        ctx.fillStyle = 'rgba(225, 29, 72, 0.88)';
         ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
         ctx.fillStyle = 'white';
-        ctx.font = 'bold 30px sans-serif';
+        ctx.font = 'bold 28px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('GAME OVER!', GAME_WIDTH / 2, GAME_HEIGHT / 2 - 20);
-        ctx.font = '20px sans-serif';
-        ctx.fillText('Điểm số: ' + score, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20);
-        ctx.fillText('Chạm/Bấm Space để CHƠI LẠI', GAME_WIDTH / 2, GAME_HEIGHT / 2 + 60);
+        ctx.fillText('GAME OVER!', GAME_WIDTH / 2, GAME_HEIGHT / 2 - 25);
+        ctx.font = '18px sans-serif';
+        ctx.fillText('Điểm của bạn: ' + score, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 15);
+        ctx.fillText('👉 Chạm vào màn hình để chơi lại', GAME_WIDTH / 2, GAME_HEIGHT / 2 + 55);
     }
 }
-
-function toggleMute(e) {
-    if (e) e.stopPropagation();
-    isMuted = !isMuted;
-    if (isMuted) {
-        stopBGM();
-    } else if (gameStarted && !gameOver) {
-        startBGM();
-    }
-}
-
-canvas.addEventListener('click', (e) => {
-    let rect = canvas.getBoundingClientRect();
-    let clickX = e.clientX - rect.left;
-    let clickY = e.clientY - rect.top;
-    if (clickX > GAME_WIDTH - 190 && clickX < GAME_WIDTH - 130 && clickY < 60) {
-        toggleMute(e);
-    }
-});
 
 function draw() {
     ctx.save();
     if (shakeTime > 0) {
-        let dx = (Math.random() - 0.5) * 12;
-        let dy = (Math.random() - 0.5) * 12;
+        let dx = (Math.random() - 0.5) * 10;
+        let dy = (Math.random() - 0.5) * 10;
         ctx.translate(dx, dy);
         shakeTime--;
     }
@@ -590,4 +589,4 @@ draw();
 </html>
 """
 
-components.html(game_html, height=560)
+components.html(game_html, height=580)
